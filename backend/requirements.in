@@ -8,3 +8,5 @@ pydantic[email]
 passlib[argon2]
 python-jose[cryptography]
 python-multipart
+requests
+apscheduler
