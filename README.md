@@ -57,10 +57,8 @@ npm run dev
 
 ```bash
 cd backend
-python -m venv .venv
-source .venv/bin/activate  # ou .venv\Scripts\activate sous Windows
-pip install -r requirements.txt
-uvicorn main:app --reload
+make install
+make run
 ```
 
 ---
