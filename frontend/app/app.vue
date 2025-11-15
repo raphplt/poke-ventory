@@ -1,5 +1,5 @@
 <template>
-  <div>
-   <test-component />
-  </div>
+   <div>
+      <test-component />
+   </div>
 </template>

@@ -9,31 +9,67 @@ API FastAPI pour Poke-ventory - Gestion d'inventaire Pokémon
 
 ## Installation
 
+### Avec `make` (recommandé, macOS & Windows)
+
+Depuis le dossier `backend/` :
+
 ```bash
-# Créer un environnement virtuel
+make install
+```
+
+Cette commande :
+
+- crée un environnement virtuel `.venv` (Windows ou macOS/Linux) ;
+- installe `fastapi` et `uvicorn[standard]` ;
+- génère `requirements.txt`.
+
+### Installation manuelle
+
+macOS / Linux :
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install fastapi "uvicorn[standard]"
+pip freeze > requirements.txt
+```
+
+Windows (PowerShell) :
+
+```powershell
 python -m venv .venv
-
-# Activer l'environnement virtuel
-source .venv/bin/activate  # sous Windows: .venv\Scripts\activate
-
-# Installer les dépendances
-pip install fastapi uvicorn[standard]
-
-# Sauvegarder les dépendances
+.venv\Scripts\Activate.ps1
+pip install fastapi "uvicorn[standard]"
 pip freeze > requirements.txt
 ```
 
 ## Démarrage
 
+### Avec `make` (recommandé)
+
+Depuis le dossier `backend/` :
+
 ```bash
-# Activer l'environnement virtuel si ce n'est pas déjà fait
-source .venv/bin/activate
-
-# Lancer le serveur de développement
-uvicorn app.main:app --reload
-
-# Le serveur sera accessible sur http://localhost:8000
+make run
 ```
+
+### Démarrage manuel
+
+macOS / Linux :
+
+```bash
+source .venv/bin/activate
+uvicorn app.main:app --reload
+```
+
+Windows (PowerShell) :
+
+```powershell
+.venv\Scripts\Activate.ps1
+uvicorn app.main:app --reload
+```
+
+Le serveur sera accessible sur <http://localhost:8000>.
 
 ## Endpoints disponibles
 
