@@ -25,15 +25,15 @@ def login(
     db: Session = Depends(get_db)
 ):
     """
-    Authentification par email/password
+    Authentification par username/password
     Retourne un access token et un refresh token
     """
-    user = db.query(User).filter(User.email == credentials.email).first()
+    user = db.query(User).filter(User.username == credentials.username).first()
     
     if not user or not verify_password(credentials.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Email ou mot de passe incorrect",
+            detail="Nom d'utilisateur ou mot de passe incorrect",
             headers={"WWW-Authenticate": "Bearer"},
         )
     

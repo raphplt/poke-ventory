@@ -1,0 +1,66 @@
+<template>
+	<div class="min-h-screen bg-gray-50">
+		<nav class="bg-white shadow-sm">
+			<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+				<div class="flex justify-between h-16">
+					<div class="flex items-center">
+						<NuxtLink to="/" class="text-xl font-bold text-gray-900">
+							PokeVentory
+						</NuxtLink>
+					</div>
+
+					<div class="flex items-center space-x-4">
+						<NuxtLink
+							to="/test-cards"
+							class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+						>
+							Cartes
+						</NuxtLink>
+
+						<template v-if="isAuthenticated">
+							<span class="text-sm text-gray-600">
+								{{ user?.username }}
+							</span>
+							<button
+								class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+								@click="handleLogout"
+							>
+								Deconnexion
+							</button>
+						</template>
+
+						<!-- Non connecte -->
+						<template v-else>
+							<NuxtLink
+								to="/auth/login"
+								class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+							>
+								Connexion
+							</NuxtLink>
+							<NuxtLink
+								to="/auth/register"
+								class="bg-blue-600 text-white hover:bg-blue-700 px-4 py-2 rounded-md text-sm font-medium"
+							>
+								Inscription
+							</NuxtLink>
+						</template>
+					</div>
+				</div>
+			</div>
+		</nav>
+
+		<main>
+			<slot />
+		</main>
+	</div>
+</template>
+
+<script setup lang="ts">
+const { user, isAuthenticated, logout } = useAuth();
+const router = useRouter();
+
+const handleLogout = async () => {
+	await logout();
+	await router.push("/auth/login");
+};
+</script>

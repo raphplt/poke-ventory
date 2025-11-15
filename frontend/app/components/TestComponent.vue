@@ -6,5 +6,4 @@
 </template>
 
 <script>
-console.log("TestComponent loaded");
 </script>
