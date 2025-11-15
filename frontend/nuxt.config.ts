@@ -3,7 +3,11 @@ import tailwindcss from "@tailwindcss/vite";
 export default defineNuxtConfig({
 	compatibilityDate: "2025-07-15",
 	devtools: { enabled: true },
-	css: ["./app/assets/css/main.css"],
+	css: [
+		"./app/assets/css/main.css",
+		"filepond/dist/filepond.min.css",
+		"filepond-plugin-image-preview/dist/filepond-plugin-image-preview.css",
+	],
 	vite: {
 		plugins: [tailwindcss()],
 	},

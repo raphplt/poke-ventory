@@ -8,7 +8,7 @@ from typing import List
 from app.database import get_db
 from app.models.series import Series
 from app.schemas.series import SeriesCreate, SeriesResponse, SeriesUpdate
-from app.routes.auth import get_current_user
+from app.utils.dependencies import get_current_user
 from app.models.user import User
 
 router = APIRouter(

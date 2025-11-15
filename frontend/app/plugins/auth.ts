@@ -5,6 +5,5 @@
 export default defineNuxtPlugin(async () => {
 	const { fetchUser } = useAuth();
 
-	// Tenter de récupérer l'utilisateur depuis le cookie httpOnly
 	await fetchUser();
 });

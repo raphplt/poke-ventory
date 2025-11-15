@@ -6,6 +6,7 @@ from app.database import get_db
 from app.models.user import User
 from app.schemas.user import UserCreate, UserResponse, UserUpdate
 from app.utils.security import hash_password
+from app.utils.dependencies import get_current_user
 
 router = APIRouter(
     prefix="/users",
@@ -41,18 +42,27 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/", response_model=List[UserResponse])
-def get_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+def get_users(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """
-    Récupérer la liste des users (avec pagination)
+    Récupérer la liste des users (avec pagination) - Authentification requise
     """
     users = db.query(User).offset(skip).limit(limit).all()
     return users
 
 
 @router.get("/{user_id}", response_model=UserResponse)
-def get_user(user_id: int, db: Session = Depends(get_db)):
+def get_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """
-    Récupérer un user par son ID
+    Récupérer un user par son ID - Authentification requise
     """
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
@@ -61,10 +71,21 @@ def get_user(user_id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/{user_id}", response_model=UserResponse)
-def update_user(user_id: int, user_update: UserUpdate, db: Session = Depends(get_db)):
+def update_user(
+    user_id: int,
+    user_update: UserUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """
-    Mettre à jour un user
+    Mettre à jour un user - Authentification requise
     """
+    # Vérifier que l'utilisateur modifie son propre profil
+    if current_user.id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Vous ne pouvez modifier que votre propre profil"
+        )
     db_user = db.query(User).filter(User.id == user_id).first()
     if not db_user:
         raise HTTPException(status_code=404, detail="User non trouvé")
@@ -83,10 +104,20 @@ def update_user(user_id: int, user_update: UserUpdate, db: Session = Depends(get
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_user(user_id: int, db: Session = Depends(get_db)):
+def delete_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """
-    Supprimer un user
+    Supprimer un user - Authentification requise
     """
+    # Vérifier que l'utilisateur supprime son propre compte
+    if current_user.id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Vous ne pouvez supprimer que votre propre compte"
+        )
     db_user = db.query(User).filter(User.id == user_id).first()
     if not db_user:
         raise HTTPException(status_code=404, detail="User non trouvé")

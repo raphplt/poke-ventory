@@ -18,6 +18,14 @@
 						</NuxtLink>
 
 						<template v-if="isAuthenticated">
+
+                            	<NuxtLink
+							to="/import"
+							class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+						>
+							Importer
+						</NuxtLink>
+                            
 							<span class="text-sm text-gray-600">
 								{{ user?.username }}
 							</span>

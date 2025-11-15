@@ -8,7 +8,7 @@ from typing import List, Optional
 from app.database import get_db
 from app.models.card import Card
 from app.schemas.card import CardCreate, CardResponse, CardUpdate
-from app.routes.auth import get_current_user
+from app.utils.dependencies import get_current_user
 from app.models.user import User
 
 router = APIRouter(
