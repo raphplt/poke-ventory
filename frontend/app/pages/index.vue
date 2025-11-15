@@ -18,7 +18,7 @@
 			<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 				<NuxtLink
 					to="/test-cards"
-					class="block p-6 border rounded-lg hover:shadow-lg transition-shadow bg-white"
+					class="block p-6 border border-gray-300 rounded-lg hover:shadow-lg transition-shadow bg-white"
 				>
 					<h2 class="text-xl font-semibold mb-2">📋 Catalogue de cartes</h2>
 					<p class="text-gray-600">
@@ -27,7 +27,7 @@
 				</NuxtLink>
 
 				<div
-					class="block p-6 border rounded-lg bg-gray-50 opacity-50 cursor-not-allowed"
+					class="block p-6 border border-gray-300 rounded-lg bg-gray-50 opacity-50 cursor-not-allowed"
 				>
 					<h2 class="text-xl font-semibold mb-2">🎒 Ma collection</h2>
 					<p class="text-gray-600">Gérer votre collection personnelle</p>
@@ -36,7 +36,7 @@
 			</div>
 
 			<!-- Statistiques si connecté -->
-			<div v-if="isAuthenticated" class="mt-8 p-6 bg-white rounded-lg border">
+			<div v-if="isAuthenticated" class="mt-8 p-6 bg-white rounded-lg border border-gray-300">
 				<h3 class="text-lg font-semibold mb-4">Statistiques</h3>
 				<div class="grid grid-cols-3 gap-4 text-center">
 					<div>
