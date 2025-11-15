@@ -22,14 +22,15 @@
 								{{ user?.username }}
 							</span>
 							<button
-								class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+								class="flex items-center px-3 py-1 rounded-md text-sm font-medium border-red-600 
+                                border text-red-600 hover:bg-red-50 cursor-pointer hover:scale-105"
 								@click="handleLogout"
 							>
-								Deconnexion
+                                <Icon name="mdi:logout" class="inline-block w-4 h-4 mr-1" />
+								Déconnexion
 							</button>
 						</template>
 
-						<!-- Non connecte -->
 						<template v-else>
 							<NuxtLink
 								to="/auth/login"
