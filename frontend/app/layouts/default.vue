@@ -19,11 +19,17 @@
 
 						<template v-if="isAuthenticated">
 
-                            	<NuxtLink
+                        <NuxtLink
 							to="/import"
 							class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
 						>
 							Importer
+						</NuxtLink>
+                        <NuxtLink
+							to="/collection"
+							class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+						>
+							Collection
 						</NuxtLink>
                             
 							<span class="text-sm text-gray-600">
