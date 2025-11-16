@@ -107,7 +107,7 @@ const resetAnalysis = () => {
 	expanded.value = {};
 };
 
-const candidateScore = (candidate: CardCandidate) => Math.round(candidate.score * 100);
+const candidateScore = (candidate?: CardCandidate) => (candidate ? Math.round(candidate.score * 100) : 0);
 const sealedWarning = computed(() => subjectType.value === "sealed");
 </script>
 
@@ -229,9 +229,9 @@ const sealedWarning = computed(() => subjectType.value === "sealed");
 						class="flex items-center justify-between rounded border p-3"
 					>
 						<div>
-							<p class="text-lg font-semibold">{{ draft.candidates[0].name }}</p>
+							<p class="text-lg font-semibold">{{ draft.candidates[0]?.name }}</p>
 							<p class="text-sm text-gray-500">
-								{{ draft.candidates[0].set_name }} · #{{ draft.candidates[0].local_id }}
+								{{ draft.candidates[0]?.set_name }} · #{{ draft.candidates[0]?.local_id }}
 							</p>
 							<p class="text-xs text-gray-400">
 								Confiance : {{ candidateScore(draft.candidates[0]) }}%
@@ -240,7 +240,7 @@ const sealedWarning = computed(() => subjectType.value === "sealed");
 						<button
 							class="rounded bg-emerald-600 px-4 py-2 text-white disabled:opacity-50"
 							:disabled="draft.status === 'validated' || selectionLoading === draft.id"
-							@click="handleValidation(draft, draft.candidates[0])"
+							@click="handleValidation(draft, draft.candidates[0]!)"
 						>
 							{{ draft.status === "validated" ? "Validée" : "Valider" }}
 						</button>
@@ -293,12 +293,12 @@ const sealedWarning = computed(() => subjectType.value === "sealed");
 							</div>
 						</div>
 
-						<div v-if="draft.detected_metadata?.raw_text" class="rounded bg-gray-50 p-3 text-xs">
+						<!-- <div v-if="draft.detected_metadata?.raw_text" class="rounded bg-gray-50 p-3 text-xs">
 							<p class="font-semibold">Texte OCR :</p>
 							<p class="whitespace-pre-line text-gray-600">
 								{{ draft.detected_metadata.raw_text }}
 							</p>
-						</div>
+						</div> -->
 					</div>
 				</div>
 			</div>
