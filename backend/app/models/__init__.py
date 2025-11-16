@@ -9,6 +9,9 @@ from app.models.analysis_image import AnalysisImage
 from app.models.card_draft import CardDraft
 from app.models.user_card import UserCard
 from app.models.user_master_set import UserMasterSet
+from app.models.sealed_item import SealedItem
+from app.models.sealed_item_locale import SealedItemLocale
+from app.models.user_sealed_item import UserSealedItem
 
 __all__ = [
     "User",
@@ -19,4 +22,7 @@ __all__ = [
     "CardDraft",
     "UserCard",
     "UserMasterSet",
+    "SealedItem",
+    "SealedItemLocale",
+    "UserSealedItem",
 ]

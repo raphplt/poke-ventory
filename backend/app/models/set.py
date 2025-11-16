@@ -31,6 +31,8 @@ class Set(Base):
     
     # Relations avec Cards
     cards = relationship("Card", back_populates="set", cascade="all, delete-orphan")
+    # Relations avec SealedItems
+    sealed_items = relationship("SealedItem", back_populates="set", cascade="all, delete-orphan")
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
