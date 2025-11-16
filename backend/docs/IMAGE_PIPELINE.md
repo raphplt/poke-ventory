@@ -6,9 +6,9 @@ Cette section décrit le flux complet côté backend pour l'import de photos (Fi
 
 ## Vue d'ensemble
 
-1. **Upload** : le frontend envoie une ou plusieurs images via `POST /imports/batches`.
+1. **Upload** : le frontend envoie une ou plusieurs images via `POST /imports/batches` en précisant `subject_type` (`cards` ou `sealed`).
 2. **Stockage temporaire** : les octets sont stockés dans Redis (TTL configurable) et les métadonnées sont persistées dans `analysis_images`.
-3. **Analyse** : `ImageAnalyzer` (OpenCV + Pytesseract) détecte les cartes présentes et extrait des features (numéro local, nom probable, indice de set…).
+3. **Analyse** : `ImageAnalyzer` (OpenCV multi-rotations + EasyOCR/pytesseract) détecte les cartes présentes, découpe les différentes zones (haut, bas, texte) et extrait des features (nom, PV, numéro, set, illustrateur, année…).
 4. **Matching** : `CardMatchingService` interroge la base complète `cards` + `sets` et retourne des candidats scorés.
 5. **Validation UX** : le frontend affiche les candidats classés, l'utilisateur valide ou choisit un autre candidat.
 6. **Création collection** : `POST /imports/drafts/{draft_id}/select` crée un `UserCard`, marque le draft comme validé et met à jour la progression `user_master_set`.
@@ -21,11 +21,14 @@ Cette section décrit le flux complet côté backend pour l'import de photos (Fi
 | --- | --- |
 | `app/services/image_store.py` | Lecture/écriture des octets d'image dans Redis (`IMAGE_TTL_SECONDS`). |
 | `app/models/analysis_image.py` | Métadonnées d'une image (filename, mimetype, TTL, statut). |
-| `app/services/image_analysis.py` | Détection des cartes + extraction des infos OCR. |
-| `app/services/card_matching.py` | Ranking des cartes candidates via fuzzing nom/numéro/set. |
-| `app/models/card_draft.py` | Résultat d'analyse d'une carte détectée (candidats, statut). |
+| `app/services/image_analysis.py` | Détection multi-cartes (classeurs, rotations) + OCR contextuel (zones nom/HP/bas de carte). |
+| `app/services/card_text.py` | Wrapper EasyOCR/pytesseract pour extraire les champs structurés (FR par défaut). |
+| `app/services/card_matching.py` | Ranking combinant nom/numéro/HP/types/illustrateur + similarité visuelle ORB (optionnelle). |
+| `app/services/card_similarity.py` | Compare un crop et l'artwork officiel via ORB (activé si `ANALYSIS_VISUAL_MATCHING=1`). |
+| `app/models/card_draft.py` | Résultat d'analyse d'une carte détectée (candidats, statut, `subject_type`). |
 | `app/models/user_card.py` | Carte effectivement possédée par l'utilisateur (créée après validation). |
 | `app/models/user_master_set.py` | Suivi de la progression utilisateur sur un set précis. |
+| `app/services/reporting.py` | Génère un JSON d'audit horodaté dans `ANALYSIS_OUTPUT_DIR`. |
 
 ---
 
@@ -39,6 +42,7 @@ Upload multipart (`files[]`) → retourne `batch_id` et la liste des drafts cré
 
 ```bash
 curl -H "Authorization: Bearer $TOKEN" \
+  -F "subject_type=cards" \
   -F "files=@/tmp/carte-1.jpg" -F "files=@/tmp/carte-2.jpg" \
   http://localhost:8000/imports/batches
 ```
@@ -54,6 +58,7 @@ Réponse:
       "image_id": "b288c722-815e-4f2d-9c8b-8c02ec0789c6",
       "status": "awaiting_validation",
       "image_url": "/imports/images/b288c722-815e-4f2d-9c8b-8c02ec0789c6",
+      "subject_type": "cards",
       "candidates": [{ "card_id": "sv3-51", "name": "Noadkoko", "score": 0.91, "...": "..." }],
       "detected_metadata": {
         "probable_name": "NOADKOKO",
@@ -96,7 +101,7 @@ Réponse:
 
 ```json
 {
-  "draft": { "...": "Draft mis à jour (status=validated)" },
+  "draft": { "...": "Draft mis à jour (status=validated)", "subject_type": "cards" },
   "user_card": {
     "id": "d566ba9a-78cf-4c1a-94f0-1c8c9498acdb",
     "card_id": "sv3-51",
@@ -119,7 +124,7 @@ Réponse:
 | Table | Description | Champs clés |
 | --- | --- | --- |
 | `analysis_images` | Métadonnées d'une image temp stockée (Redis key, TTL, content type). | `redis_key`, `expires_at`, `status`. |
-| `card_drafts` | Résultat d'analyse d'une carte détectée (candidats JSON, statut, image_id). | `batch_id`, `top_candidate_id`, `detected_metadata`. |
+| `card_drafts` | Résultat d'analyse d'une carte détectée (candidats JSON, statut, image_id, type). | `batch_id`, `top_candidate_id`, `detected_metadata`, `subject_type`. |
 | `user_cards` | Inventaire utilisateur (quantité, état, prix, lien vers draft source). | `condition`, `price_paid`, `draft_id`. |
 | `user_master_set` | Progression completiste sur un set. | `tracked_card_count`, `owned_card_count`, `completion_rate`. |
 
@@ -136,6 +141,10 @@ Les migrations Alembic associées se trouvent dans `backend/migrations/versions/
 | `IMAGE_TTL_SECONDS` | TTL des images temporaires | `900` |
 | `ANALYSIS_MAX_CANDIDATES` | Nb max de candidats retournés par carte | `5` |
 | `ANALYSIS_CONFIDENCE_THRESHOLD` | Seuil (hint UX) pour mettre en avant le top 1 | `0.82` |
+| `ANALYSIS_OUTPUT_DIR` | Dossier où sont stockés les rapports JSON horodatés | `output` |
+| `ANALYSIS_LANGUAGES` | Langues passées à EasyOCR/pytesseract | `fr,en` |
+| `ANALYSIS_VISUAL_MATCHING` | Active la comparaison visuelle ORB | `1` |
+| `CARD_ASSET_BASE_URL` | URL fallback pour récupérer un artwork officiel | – |
 
 > Exemple docker-compose local (PostgreSQL + Redis) :
 
@@ -163,8 +172,8 @@ uvicorn app.main:app --reload
 
 ## Flux complet (frontend -> backend)
 
-1. **Sélection FilePond** (Nuxt) → bouton "Analyser" → `useImports.uploadBatch(FormData)` → `POST /imports/batches`.
-2. **FastAPI** stocke chaque image dans Redis, crée `analysis_images`, lance `ImageAnalyzer`, crée `card_drafts`.
+1. **Sélection FilePond** (Nuxt) → bouton "Analyser" → `useImports.uploadBatch(FormData)` (avec `subject_type`) → `POST /imports/batches`.
+2. **FastAPI** stocke chaque image dans Redis, crée `analysis_images`, lance `ImageAnalyzer`, crée `card_drafts` et produit un rapport JSON dans `output/`.
 3. **Réponse** : `batch_id` + `drafts`. L'UI affiche le top 1 + bouton "Valider" + "Plus d'options".
 4. **Validation** : `selectDraft(draftId, payload)` → `POST /imports/drafts/{id}/select`.
 5. **Backend** : crée `user_cards`, marque le draft validé, recalcul `user_master_set`.
@@ -174,6 +183,6 @@ uvicorn app.main:app --reload
 
 ## Aller plus loin
 
-- Support des items scellés : ajouter un champ `item_type` dans `card_drafts` + un matcher dédié.
+- Support des items scellés : l'API accepte déjà `subject_type=sealed` (pas d'analyse, rapport archivé) – brancher un matcher dédié ultérieurement.
 - Analyse asynchrone : déplacer l'analyse dans une tâche Celery/RQ, `status=pending` jusqu'à completion.
 - Historique : stocker le JSON complet de détection pour audit/ML.

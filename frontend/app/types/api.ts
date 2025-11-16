@@ -2,6 +2,8 @@
  * Types pour les entités de l'API
  */
 
+export type SubjectType = "cards" | "sealed";
+
 export interface Card {
 	id: string;
 	local_id: string;
@@ -64,6 +66,12 @@ export interface DetectedMetadata {
 	probable_name?: string;
 	local_number?: string;
 	set_hint?: string;
+	hp_hint?: string;
+	type_hint?: string[];
+	attacks?: string[];
+	illustrator_hint?: string;
+	release_year?: string;
+	raw_lines?: string[];
 }
 
 export interface CardCandidate {
@@ -82,6 +90,7 @@ export interface CardDraft {
 	image_id: string;
 	image_url: string;
 	status: string;
+	subject_type: SubjectType;
 	candidates: CardCandidate[];
 	top_candidate_id?: string | null;
 	top_candidate_score?: number | null;
@@ -92,6 +101,7 @@ export interface CardDraft {
 export interface ImportBatchResponse {
 	batch_id: string;
 	drafts: CardDraft[];
+	report_path?: string | null;
 }
 
 export interface CardSelectionPayload {

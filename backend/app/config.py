@@ -15,6 +15,14 @@ class Settings:
             os.getenv("ANALYSIS_CONFIDENCE_THRESHOLD", "0.82")
         )
         self.max_cards_per_image = int(os.getenv("MAX_CARDS_PER_IMAGE", "4"))
+        self.analysis_output_dir = os.getenv("ANALYSIS_OUTPUT_DIR", "output")
+        self.analysis_languages = [
+            lang.strip()
+            for lang in os.getenv("ANALYSIS_LANGUAGES", "fr,en").split(",")
+            if lang.strip()
+        ] or ["fr"]
+        self.analysis_visual_matching = os.getenv("ANALYSIS_VISUAL_MATCHING", "1") == "1"
+        self.card_asset_base_url = os.getenv("CARD_ASSET_BASE_URL")
 
 
 @lru_cache(maxsize=1)

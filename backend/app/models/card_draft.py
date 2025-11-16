@@ -16,6 +16,11 @@ class CardDraftStatus(str, enum.Enum):
     expired = "expired"
 
 
+class DraftSubject(str, enum.Enum):
+    cards = "cards"
+    sealed = "sealed"
+
+
 class CardDraft(Base):
     __tablename__ = "card_drafts"
 
@@ -29,6 +34,7 @@ class CardDraft(Base):
     top_candidate_score = Column(Float, nullable=True)
     selected_card_id = Column(String, ForeignKey("cards.id"), nullable=True)
     detected_metadata = Column(JSON, nullable=True)
+    subject_type = Column(String, nullable=False, default=DraftSubject.cards.value)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

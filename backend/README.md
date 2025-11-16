@@ -56,9 +56,13 @@ REDIS_URL=redis://localhost:6379/0
 IMAGE_TTL_SECONDS=900
 ANALYSIS_MAX_CANDIDATES=5
 ANALYSIS_CONFIDENCE_THRESHOLD=0.82
+ANALYSIS_OUTPUT_DIR=output
+ANALYSIS_LANGUAGES=fr,en
+ANALYSIS_VISUAL_MATCHING=1
+CARD_ASSET_BASE_URL=https://static.pokemoncards.com
 ```
 
-`IMAGE_TTL_SECONDS` contrôle le temps de conservation des octets en Redis ; `ANALYSIS_*` ajuste les suggestions retournées au frontend.
+`IMAGE_TTL_SECONDS` contrôle le temps de conservation des octets en Redis ; `ANALYSIS_*` ajuste les suggestions retournées au frontend. `ANALYSIS_OUTPUT_DIR` indique où stocker les rapports JSON détaillant chaque batch (utile pour l'audit et le debug). `ANALYSIS_LANGUAGES` pilote EasyOCR (FR/EN par défaut), `ANALYSIS_VISUAL_MATCHING` active la comparaison visuelle ORB avec les artworks officiels, `CARD_ASSET_BASE_URL` sert de fallback si `card.image` est absent.
 
 ---
 
@@ -100,7 +104,7 @@ Les endpoints FilePond → FastAPI sont documentés dans [`docs/IMAGE_PIPELINE.m
 
 | Endpoint | Description |
 | --- | --- |
-| `POST /imports/batches` | Upload multipart (une ou plusieurs images) + analyse immédiate. |
+| `POST /imports/batches` | Upload multipart (une ou plusieurs images) + analyse immédiate (`subject_type=cards|sealed`). |
 | `GET /imports/images/{id}` | Récupération d'une image stockée en Redis (TTL refresh). |
 | `GET /imports/batches/{id}` | Récupérer les drafts d'un lot. |
 | `GET /imports/drafts/{id}` | Récupérer le détail d'un draft. |
@@ -108,10 +112,12 @@ Les endpoints FilePond → FastAPI sont documentés dans [`docs/IMAGE_PIPELINE.m
 
 L'analyse s'appuie sur :
 
-- OpenCV pour détecter les rectangles probables de cartes.
-- Pytesseract pour l'OCR (nom, numéro, set hint).
-- RapidFuzz pour comparer nom/numéro face à la base complète `cards`.
-- Redis pour stocker les octets d'image avec TTL configurable.
+- OpenCV (multi-rotations, CLAHE, découpe adaptative) pour séparer toutes les cartes d'une photo (classeur, scans, rotations 90°/180°).
+- EasyOCR (fallback pytesseract) pour lire les zones structurées FR (nom, PV, illustrateur, code set, année).
+- RapidFuzz + signaux additionnels (HP, type, illustrator, année) pour scorer les candidats grâce à la base `cards`.
+- Matching visuel ORB (configurable via `ANALYSIS_VISUAL_MATCHING`) pour comparer le crop et l'artwork officiel.
+- Redis pour stocker temporairement les octets d'image.
+- Un rapport JSON horodaté est généré dans `ANALYSIS_OUTPUT_DIR` à chaque batch.
 
 ---
 

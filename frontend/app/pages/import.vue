@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { CardCandidate, CardDraft } from "~/types/api";
+import type { CardCandidate, CardDraft, SubjectType } from "~/types/api";
 
 interface FileItem {
 	file: File;
@@ -13,10 +13,25 @@ const selectionLoading = ref<string | null>(null);
 const errorMessage = ref<string | null>(null);
 const successMessage = ref<string | null>(null);
 const expanded = ref<Record<string, boolean>>({});
+const subjectType = ref<SubjectType>("cards");
+const lastReportPath = ref<string | null>(null);
 
 const { uploadBatch, selectDraft } = useImports();
 const config = useRuntimeConfig();
 const apiBase = config.public.apiBase;
+
+const getErrorDetail = (error: unknown) => {
+	if (typeof error === "object" && error && "data" in error) {
+		const data = (error as { data?: { detail?: string } }).data;
+		if (data?.detail) {
+			return data.detail;
+		}
+	}
+	if (error instanceof Error) {
+		return error.message;
+	}
+	return "Une erreur est survenue.";
+};
 
 const handleUpdate = (fileItems: FileItem[]) => {
 	files.value = fileItems.map((item) => item.file);
@@ -32,12 +47,19 @@ const analyzeImages = async () => {
 	errorMessage.value = null;
 	successMessage.value = null;
 	try {
-		const response = await uploadBatch(files.value);
+		const response = await uploadBatch(files.value, subjectType.value);
 		currentBatch.value = response.drafts;
 		batchId.value = response.batch_id;
+		lastReportPath.value = response.report_path ?? null;
 		expanded.value = {};
-	} catch (error: any) {
-		errorMessage.value = error?.data?.detail ?? "Impossible d'analyser les images.";
+		if (response.drafts.length) {
+			const reportInfo = lastReportPath.value ? ` (rapport: ${lastReportPath.value})` : "";
+			successMessage.value = `Analyse terminée (${response.drafts.length} détection(s))${reportInfo}`;
+		} else {
+			successMessage.value = "Analyse terminée, aucune carte détectée.";
+		}
+	} catch (error: unknown) {
+		errorMessage.value = getErrorDetail(error);
 	} finally {
 		isAnalyzing.value = false;
 	}
@@ -55,6 +77,10 @@ const updateDraft = (updated: CardDraft) => {
 };
 
 const handleValidation = async (draft: CardDraft, candidate: CardCandidate) => {
+	if (draft.subject_type !== "cards") {
+		errorMessage.value = "La validation d'items scellés n'est pas encore disponible.";
+		return;
+	}
 	selectionLoading.value = draft.id;
 	errorMessage.value = null;
 	successMessage.value = null;
@@ -66,9 +92,8 @@ const handleValidation = async (draft: CardDraft, candidate: CardCandidate) => {
 		});
 		updateDraft(response.draft);
 		successMessage.value = `Carte ${candidate.name} ajoutée à ta collection !`;
-	} catch (error: any) {
-		errorMessage.value =
-			error?.data?.detail ?? "Impossible de valider cette carte pour le moment.";
+	} catch (error: unknown) {
+		errorMessage.value = getErrorDetail(error);
 	} finally {
 		selectionLoading.value = null;
 	}
@@ -78,10 +103,12 @@ const resetAnalysis = () => {
 	files.value = [];
 	currentBatch.value = null;
 	batchId.value = null;
+	lastReportPath.value = null;
 	expanded.value = {};
 };
 
 const candidateScore = (candidate: CardCandidate) => Math.round(candidate.score * 100);
+const sealedWarning = computed(() => subjectType.value === "sealed");
 </script>
 
 <template>
@@ -102,7 +129,41 @@ const candidateScore = (candidate: CardCandidate) => Math.round(candidate.score 
 			</button>
 		</div>
 
+		<div class="rounded border border-gray-200 bg-white p-4 shadow-sm">
+			<p class="font-semibold text-sm">Type d'image analysée</p>
+			<div class="mt-3 flex flex-wrap gap-6 text-sm">
+				<label class="inline-flex items-center gap-2">
+					<input
+						v-model="subjectType"
+						type="radio"
+						name="subject"
+						value="cards"
+						class="text-blue-600"
+					>
+					<span>Cartes Pokémon</span>
+				</label>
+				<label class="inline-flex items-center gap-2">
+					<input
+						v-model="subjectType"
+						type="radio"
+						name="subject"
+						value="sealed"
+						class="text-blue-600"
+					>
+					<span>Items scellés (bientôt)</span>
+				</label>
+			</div>
+			<p
+				v-if="sealedWarning"
+				class="mt-3 text-sm text-amber-600"
+			>
+				Les items scellés ne sont pas encore traités : nous enregistrons simplement la photo
+				pour de futures optimisations.
+			</p>
+		</div>
+
 		<ClientOnly>
+			<!-- cspell:ignore updatefiles -->
 			<FilePond
 				name="images"
 				class="mt-2"
@@ -153,15 +214,18 @@ const candidateScore = (candidate: CardCandidate) => Math.round(candidate.score 
 					/>
 					<span
 						class="text-xs font-semibold uppercase"
-						:class="draft.status === 'validated' ? 'text-emerald-600' : 'text-gray-500'"
+						:class="[
+							draft.subject_type === 'cards' ? 'text-blue-600' : 'text-amber-600',
+							draft.status === 'validated' ? 'text-emerald-600' : ''
+						]"
 					>
-						{{ draft.status === "validated" ? "Validée" : "À valider" }}
+						{{ draft.subject_type === "cards" ? "Carte détectée" : "Item scellé" }}
 					</span>
 				</div>
 
 				<div class="space-y-2 md:col-span-2">
 					<div
-						v-if="draft.candidates.length"
+						v-if="draft.subject_type === 'cards' && draft.candidates.length"
 						class="flex items-center justify-between rounded border p-3"
 					>
 						<div>
@@ -182,7 +246,18 @@ const candidateScore = (candidate: CardCandidate) => Math.round(candidate.score 
 						</button>
 					</div>
 
-					<div v-else class="rounded border border-dashed p-4 text-sm text-gray-500">
+					<div
+						v-else-if="draft.subject_type !== 'cards'"
+						class="rounded border border-dashed p-4 text-sm text-amber-600"
+					>
+						Analyse des items scellés en préparation. Cette image est enregistrée et pourra être
+						traitée plus tard.
+					</div>
+
+					<div
+						v-else
+						class="rounded border border-dashed p-4 text-sm text-gray-500"
+					>
 						Pas encore de suggestion, tu peux relancer une analyse ou sélectionner manuellement une carte.
 					</div>
 
@@ -193,27 +268,29 @@ const candidateScore = (candidate: CardCandidate) => Math.round(candidate.score 
 					</div>
 
 					<div v-if="expanded[draft.id]" class="space-y-2">
-						<div
-							v-for="candidate in draft.candidates.slice(1)"
-							:key="candidate.card_id"
-							class="flex items-center justify-between rounded border p-3"
-						>
-							<div>
-								<p class="font-medium">{{ candidate.name }}</p>
-								<p class="text-sm text-gray-500">
-									{{ candidate.set_name }} · #{{ candidate.local_id }}
-								</p>
-								<p class="text-xs text-gray-400">
-									Confiance : {{ candidateScore(candidate) }}%
-								</p>
-							</div>
-							<button
-								class="rounded border border-blue-500 px-4 py-2 text-blue-500 disabled:opacity-50"
-								:disabled="draft.status === 'validated' || selectionLoading === draft.id"
-								@click="handleValidation(draft, candidate)"
+						<div v-if="draft.subject_type === 'cards'">
+							<div
+								v-for="candidate in draft.candidates.slice(1)"
+								:key="candidate.card_id"
+								class="flex items-center justify-between rounded border p-3"
 							>
-								Sélectionner
-							</button>
+								<div>
+									<p class="font-medium">{{ candidate.name }}</p>
+									<p class="text-sm text-gray-500">
+										{{ candidate.set_name }} · #{{ candidate.local_id }}
+									</p>
+									<p class="text-xs text-gray-400">
+										Confiance : {{ candidateScore(candidate) }}%
+									</p>
+								</div>
+								<button
+									class="rounded border border-blue-500 px-4 py-2 text-blue-500 disabled:opacity-50"
+									:disabled="draft.status === 'validated' || selectionLoading === draft.id"
+									@click="handleValidation(draft, candidate)"
+								>
+									Sélectionner
+								</button>
+							</div>
 						</div>
 
 						<div v-if="draft.detected_metadata?.raw_text" class="rounded bg-gray-50 p-3 text-xs">
@@ -233,6 +310,9 @@ const candidateScore = (candidate: CardCandidate) => Math.round(candidate.score 
 		>
 			Aucune carte n'a été détectée dans ce lot. Essaie d'ajuster tes photos ou d'importer une nouvelle
 			image.
+		</div>
+		<div v-if="lastReportPath" class="text-xs text-gray-400">
+			Rapport stocké dans : {{ lastReportPath }}
 		</div>
 	</div>
 </template>

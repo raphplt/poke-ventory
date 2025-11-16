@@ -2,6 +2,7 @@ import type {
 	CardSelectionPayload,
 	CardSelectionResponse,
 	ImportBatchResponse,
+	SubjectType,
 } from "~/types/api";
 
 export const useImports = () => {
@@ -13,9 +14,13 @@ export const useImports = () => {
 		return accessToken.value ? { Authorization: `Bearer ${accessToken.value}` } : {};
 	};
 
-	const uploadBatch = async (files: File[]): Promise<ImportBatchResponse> => {
+	const uploadBatch = async (
+		files: File[],
+		subjectType: SubjectType
+	): Promise<ImportBatchResponse> => {
 		const formData = new FormData();
 		files.forEach((file) => formData.append("files", file));
+		formData.append("subject_type", subjectType);
 
 		return await $fetch<ImportBatchResponse>("/imports/batches", {
 			baseURL,

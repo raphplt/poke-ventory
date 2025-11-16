@@ -23,6 +23,12 @@ class DetectedMetadata(BaseModel):
     probable_name: Optional[str] = None
     local_number: Optional[str] = None
     set_hint: Optional[str] = None
+    hp_hint: Optional[str] = None
+    type_hint: Optional[List[str]] = None
+    attacks: Optional[List[str]] = None
+    illustrator_hint: Optional[str] = None
+    release_year: Optional[str] = None
+    raw_lines: Optional[List[str]] = None
 
 
 class CardDraftResponse(BaseModel):
@@ -31,6 +37,7 @@ class CardDraftResponse(BaseModel):
     image_id: UUID
     image_url: str
     status: str
+    subject_type: str
     candidates: List[CardCandidate]
     top_candidate_id: Optional[str]
     top_candidate_score: Optional[float]
@@ -44,6 +51,7 @@ class CardDraftResponse(BaseModel):
 class ImageBatchResponse(BaseModel):
     batch_id: UUID
     drafts: List[CardDraftResponse]
+    report_path: Optional[str] = None
 
 
 class CardSelectionRequest(BaseModel):

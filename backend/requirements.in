@@ -16,3 +16,8 @@ numpy
 opencv-python-headless
 pytesseract
 rapidfuzz
+easyocr
+torch
+torchvision
+torchaudio
+scikit-image

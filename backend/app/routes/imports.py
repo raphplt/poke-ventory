@@ -4,13 +4,14 @@ Routes d'import et d'analyse d'images FilePond -> FastAPI.
 from __future__ import annotations
 
 import io
+import logging
 import uuid
 from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import List
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import StreamingResponse
 from PIL import Image
 from sqlalchemy.orm import Session, selectinload
@@ -19,28 +20,34 @@ from app.config import get_settings
 from app.database import get_db
 from app.models.analysis_image import AnalysisImage
 from app.models.card import Card
-from app.models.card_draft import CardDraft, CardDraftStatus
+from app.models.card_draft import CardDraft, CardDraftStatus, DraftSubject
+from app.models.user import User
 from app.models.user_card import CardCondition, UserCard
 from app.schemas.imports import (
+    CardCandidate,
     CardDraftResponse,
     CardSelectionRequest,
     CardSelectionResponse,
-    CardCandidate,
     ImageBatchResponse,
     UserCardResponse,
     UserMasterSetResponse,
 )
 from app.services.card_matching import CardMatchingService
+from app.services.card_similarity import CardVisualMatcher
 from app.services.image_analysis import DetectedCardFeatures, ImageAnalyzer
 from app.services.image_store import ImageStorageService
 from app.services.master_set import MasterSetProgressService
+from app.services.reporting import AnalysisReportWriter
 from app.utils.dependencies import get_current_user
-from app.models.user import User
 
 router = APIRouter(
     prefix="/imports",
     tags=["imports"],
 )
+
+logger = logging.getLogger("app.routes.imports")
+report_writer = AnalysisReportWriter()
+visual_matcher = CardVisualMatcher()
 
 
 def _draft_to_response(draft: CardDraft) -> CardDraftResponse:
@@ -55,6 +62,7 @@ def _draft_to_response(draft: CardDraft) -> CardDraftResponse:
         image_id=draft.image_id,
         image_url=f"/imports/images/{draft.image_id}",
         status=draft.status,
+        subject_type=draft.subject_type,
         candidates=candidate_objects,
         top_candidate_id=draft.top_candidate_id,
         top_candidate_score=draft.top_candidate_score,
@@ -66,28 +74,51 @@ def _draft_to_response(draft: CardDraft) -> CardDraftResponse:
 @router.post("/batches", response_model=ImageBatchResponse, status_code=status.HTTP_201_CREATED)
 async def create_import_batch(
     files: List[UploadFile] = File(...),
+    subject_type: str = Form("cards"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     if not files:
         raise HTTPException(status_code=400, detail="Aucun fichier fourni")
 
+    try:
+        selected_subject = DraftSubject(subject_type)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Type d'import invalide")
+
     storage = ImageStorageService()
     analyzer = ImageAnalyzer()
-    matcher = CardMatchingService(db)
+    matcher = CardMatchingService(db, visual_matcher=visual_matcher)
     settings = get_settings()
 
     batch_id = uuid.uuid4()
     created_drafts: List[CardDraft] = []
 
-    for uploaded in files:
+    logger.info(
+        "🚀 Lancement analyse batch=%s type=%s (user=%s, fichiers=%s)",
+        batch_id,
+        selected_subject.value,
+        current_user.id,
+        len(files),
+    )
+
+    for index, uploaded in enumerate(files, start=1):
         content = await uploaded.read()
         if not content:
+            logger.warning("⚠️  Fichier #%s vide (%s), ignoré", index, uploaded.filename)
             continue
 
         image_uuid, redis_key = storage.save_image(content)
         pil_image = Image.open(io.BytesIO(content))
         width, height = pil_image.size
+
+        logger.info(
+            "📸 Image #%s (%s) résolutions %sx%s",
+            index,
+            uploaded.filename or image_uuid,
+            width,
+            height,
+        )
 
         image_record = AnalysisImage(
             id=uuid.UUID(image_uuid),
@@ -104,8 +135,8 @@ async def create_import_batch(
         db.add(image_record)
         db.flush()
 
-        detections = analyzer.analyze(content)
-        if not detections:
+        if selected_subject == DraftSubject.sealed:
+            logger.info("📦 Image marquée comme item scellé (non géré pour l'instant)")
             detections = [
                 DetectedCardFeatures(
                     bounding_box=(0, 0, width, height),
@@ -113,23 +144,63 @@ async def create_import_batch(
                     probable_name=None,
                     local_number=None,
                     set_hint=None,
+                    orientation="sealed",
+                    confidence=0.0,
+                )
+            ]
+        else:
+            detections = analyzer.analyze(content, subject_type=selected_subject.value)
+
+        if not detections:
+            logger.warning("❔ Aucune détection – fallback pleine image")
+            detections = [
+                DetectedCardFeatures(
+                    bounding_box=(0, 0, width, height),
+                    raw_text="",
+                    probable_name=None,
+                    local_number=None,
+                    set_hint=None,
+                    orientation="fallback",
+                    confidence=0.0,
                 )
             ]
 
         for detection in detections[: settings.max_cards_per_image]:
-            candidates = matcher.find_candidates(
-                probable_name=detection.probable_name,
-                local_number=detection.local_number,
-                set_hint=detection.set_hint,
-            )
-            candidates_payload = [candidate.to_dict() for candidate in candidates]
-            status_value = (
-                CardDraftStatus.awaiting_validation.value
-                if candidates_payload
-                else CardDraftStatus.pending.value
-            )
-            top_candidate_id = candidates_payload[0]["card_id"] if candidates_payload else None
-            top_candidate_score = candidates_payload[0]["score"] if candidates_payload else None
+            candidates_payload = []
+            top_candidate_id = None
+            top_candidate_score = None
+            status_value = CardDraftStatus.pending.value
+            metadata_payload = detection.to_payload()
+
+            if selected_subject == DraftSubject.cards:
+                candidates = matcher.find_candidates(
+                    probable_name=detection.probable_name,
+                    local_number=detection.local_number,
+                    set_hint=detection.set_hint,
+                    hp_hint=detection.hp_hint,
+                    type_hint=detection.type_hint,
+                    illustrator_hint=detection.illustrator_hint,
+                    release_year=detection.release_year,
+                    crop_image=detection.image_patch,
+                )
+                candidates_payload = [candidate.to_dict() for candidate in candidates]
+                status_value = (
+                    CardDraftStatus.awaiting_validation.value
+                    if candidates_payload
+                    else CardDraftStatus.pending.value
+                )
+                if candidates_payload:
+                    top_candidate_id = candidates_payload[0]["card_id"]
+                    top_candidate_score = candidates_payload[0]["score"]
+                logger.info(
+                    "  🔎 Détection %s → %s candidats (top=%s | score=%.2f)",
+                    detection.bounding_box,
+                    len(candidates_payload),
+                    top_candidate_id,
+                    top_candidate_score or 0.0,
+                )
+            else:
+                metadata_payload["note"] = "Analyse des items scellés non encore disponible"
 
             draft = CardDraft(
                 batch_id=batch_id,
@@ -139,7 +210,8 @@ async def create_import_batch(
                 candidates=candidates_payload,
                 top_candidate_id=top_candidate_id,
                 top_candidate_score=top_candidate_score,
-                detected_metadata=detection.to_payload(),
+                detected_metadata=metadata_payload,
+                subject_type=selected_subject.value,
             )
             db.add(draft)
             created_drafts.append(draft)
@@ -150,9 +222,37 @@ async def create_import_batch(
     for draft in created_drafts:
         db.refresh(draft)
 
+    report_payload = {
+        "batch_id": str(batch_id),
+        "user_id": current_user.id,
+        "subject_type": selected_subject.value,
+        "created_at": datetime.utcnow().isoformat(),
+        "stats": {
+            "files": len(files),
+            "drafts": len(created_drafts),
+        },
+        "drafts": [
+            {
+                "draft_id": str(d.id),
+                "image_id": str(d.image_id),
+                "subject_type": d.subject_type,
+                "status": d.status,
+                "detected_metadata": d.detected_metadata,
+                "candidates": d.candidates,
+                "top_candidate_id": d.top_candidate_id,
+                "top_candidate_score": d.top_candidate_score,
+            }
+            for d in created_drafts
+        ],
+    }
+    report_path = report_writer.write_batch(report_payload) if created_drafts else None
+
+    logger.info("✅ Analyse batch %s terminée (%s drafts)", batch_id, len(created_drafts))
+
     return ImageBatchResponse(
         batch_id=batch_id,
         drafts=[_draft_to_response(d) for d in created_drafts],
+        report_path=str(report_path) if report_path else None,
     )
 
 
@@ -241,6 +341,8 @@ def select_card(
         raise HTTPException(status_code=404, detail="Draft introuvable")
     if draft.status == CardDraftStatus.validated.value:
         raise HTTPException(status_code=400, detail="Draft déjà validé")
+    if draft.subject_type != DraftSubject.cards.value:
+        raise HTTPException(status_code=400, detail="La validation est réservée aux cartes pour le moment")
 
     card = db.query(Card).filter(Card.id == payload.card_id).first()
     if not card:
