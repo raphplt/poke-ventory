@@ -23,13 +23,12 @@ export interface Card {
 
 export interface Set {
 	id: string;
-	tcgdex_id: string;
 	name: string;
 	logo: string | null;
-	card_count: {
-		total: number;
-		official: number;
-	};
+	symbol: string | null;
+	card_count_official: number | null;
+	card_count_total: number | null;
+	release_date: string | null;
 	series_id: string;
 	created_at: string;
 	updated_at: string | null;
@@ -37,8 +36,8 @@ export interface Set {
 
 export interface Series {
 	id: string;
-	tcgdex_id: string;
 	name: string;
+	logo: string | null;
 	created_at: string;
 	updated_at: string | null;
 }
@@ -46,11 +45,22 @@ export interface Series {
 // Filtres
 export interface CardFilters {
 	set_id?: string;
+	series_id?: string;
 	name?: string;
 	rarity?: string;
+	category?: string;
 	type?: string;
+	stage?: string;
+	local_id?: string;
 	skip?: number;
 	limit?: number;
+}
+
+export interface CardsResponse {
+	items: Card[];
+	total: number;
+	skip: number;
+	limit: number;
 }
 
 export interface SetFilters {
@@ -121,8 +131,36 @@ export interface UserCard {
 	condition: string;
 	price_paid?: number | null;
 	acquired_at?: string | null;
+	source?: string | null;
 	notes?: string | null;
 	created_at: string;
+	updated_at?: string | null;
+	card?: {
+		id: string;
+		name: string;
+		local_id: string;
+		image: string | null;
+		set_id: string;
+		rarity: string | null;
+		category: string | null;
+	} | null;
+}
+
+export interface UserCardsResponse {
+	items: UserCard[];
+	total: number;
+	skip: number;
+	limit: number;
+}
+
+export interface UserCardCreate {
+	card_id: string;
+	quantity?: number;
+	condition?: string;
+	price_paid?: number | null;
+	acquired_at?: string | null;
+	source?: string | null;
+	notes?: string | null;
 }
 
 export interface UserMasterSet {
