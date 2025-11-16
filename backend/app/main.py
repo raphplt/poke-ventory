@@ -6,6 +6,7 @@ from app.routes.auth import router as auth_router
 from app.routes.series import router as series_router
 from app.routes.sets import router as sets_router
 from app.routes.cards import router as cards_router
+from app.routes.imports import router as imports_router
 from app.database import engine, Base
 from app.scheduler import start_scheduler
 
@@ -47,6 +48,7 @@ app.include_router(users_router)
 app.include_router(series_router)
 app.include_router(sets_router)
 app.include_router(cards_router)
+app.include_router(imports_router)
 
 @app.get("/health")
 def health():

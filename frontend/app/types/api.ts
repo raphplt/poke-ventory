@@ -57,3 +57,76 @@ export interface SetFilters {
 	skip?: number;
 	limit?: number;
 }
+
+export interface DetectedMetadata {
+	bounding_box?: number[];
+	raw_text?: string;
+	probable_name?: string;
+	local_number?: string;
+	set_hint?: string;
+}
+
+export interface CardCandidate {
+	card_id: string;
+	name: string;
+	set_id: string;
+	set_name: string;
+	local_id: string;
+	rarity?: string | null;
+	score: number;
+}
+
+export interface CardDraft {
+	id: string;
+	batch_id: string;
+	image_id: string;
+	image_url: string;
+	status: string;
+	candidates: CardCandidate[];
+	top_candidate_id?: string | null;
+	top_candidate_score?: number | null;
+	detected_metadata?: DetectedMetadata | null;
+	created_at: string;
+}
+
+export interface ImportBatchResponse {
+	batch_id: string;
+	drafts: CardDraft[];
+}
+
+export interface CardSelectionPayload {
+	card_id: string;
+	quantity?: number;
+	condition?: string;
+	price_paid?: number | null;
+	acquired_at?: string | null;
+	notes?: string | null;
+}
+
+export interface UserCard {
+	id: string;
+	card_id: string;
+	user_id: number;
+	quantity: number;
+	condition: string;
+	price_paid?: number | null;
+	acquired_at?: string | null;
+	notes?: string | null;
+	created_at: string;
+}
+
+export interface UserMasterSet {
+	id: string;
+	user_id: number;
+	set_id: string;
+	tracked_card_count: number;
+	owned_card_count: number;
+	completion_rate: number;
+	status: string;
+}
+
+export interface CardSelectionResponse {
+	draft: CardDraft;
+	user_card: UserCard;
+	master_set?: UserMasterSet | null;
+}

@@ -14,6 +14,21 @@ Le projet est structuré en **monorepo** avec un backend FastAPI et un frontend 
 
 ---
 
+## **État actuel du repo**
+
+- **Backend FastAPI**
+  - Authentification JWT (login/refresh/logout + middleware `get_current_user`).
+  - Modèles complets importés depuis TCGdex (`Series`, `Set`, `Card`) + scheduler APScheduler.
+  - Nouveau pipeline d'import d'images (`analysis_images`, `card_drafts`, `user_cards`, `user_master_set`) et services dédiés (Redis, OCR, matching, progression de master set).
+  - Migrations Alembic (`backend/migrations`) + documentation détaillée (`backend/docs/IMAGE_PIPELINE.md`).
+
+- **Frontend Nuxt 4**
+  - Auth composables (`useApi`, `useAuth`, `useCards`).
+  - Page `import.vue` avec FilePond, affichage des candidats, bouton "Valider" + "Plus d'options", intégration complète avec l'API FastAPI.
+  - Nuxt UI + Tailwind pour le design.
+
+---
+
 ## **Fonctionnalités prévues**
 
 * Gestion de la collection (ajout, édition, suppression)
@@ -39,7 +54,24 @@ Le projet est structuré en **monorepo** avec un backend FastAPI et un frontend 
 * FastAPI
 * SQLAlchemy
 * PostgreSQL
+* Redis + OpenCV + Pytesseract + RapidFuzz pour l'analyse
 * OCR (pytesseract)
+
+---
+
+## **Pipeline d'import d'images**
+
+Le flux complet FilePond → FastAPI → création d'un `user_card` est décrit dans [`backend/docs/IMAGE_PIPELINE.md`](backend/docs/IMAGE_PIPELINE.md) :
+
+1. Upload FilePond (`POST /imports/batches`) → stockage Redis + analyse OCR/CV.
+2. Retour des `card_drafts` (candidats scorés).
+3. Validation (`POST /imports/drafts/{id}/select`) → création `user_cards` + mise à jour `user_master_set`.
+
+Sur le frontend, la page `import.vue` expose :
+
+- Liste des images sélectionnées.
+- Résultats d'analyse par carte détectée (top 1 + "Plus d'options").
+- Bouton "Valider" qui appelle directement l'API pour ajouter la carte à la collection.
 
 ---
 
