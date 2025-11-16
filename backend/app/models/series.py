@@ -1,5 +1,5 @@
 """
-Modèle Series - Représente une série de cartes Pokémon (ex: Écarlate et Violet)
+Modèle Series : Représente une série de cartes Pokémon (ex: Écarlate et Violet)
 """
 from sqlalchemy import Column, Integer, String, DateTime
 from sqlalchemy.orm import relationship
