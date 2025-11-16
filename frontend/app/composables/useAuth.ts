@@ -112,10 +112,14 @@ export const useAuth = () => {
 	 */
 	const refreshToken = async () => {
 		try {
-			await api.post("/auth/refresh");
+			const response = await api.post<AuthResponse>("/auth/refresh");
+			accessToken.value = response.access_token;
+			// Récupérer les infos utilisateur après le refresh
+			await fetchUser();
 			return true;
 		} catch {
 			user.value = null;
+			accessToken.value = null;
 			return false;
 		}
 	};

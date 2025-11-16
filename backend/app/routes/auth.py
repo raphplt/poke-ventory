@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Response
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -56,15 +56,25 @@ def login(
 
 @router.post("/refresh", response_model=Token)
 def refresh_access_token(
-    refresh_request: RefreshRequest,
+    request: Request,
     response: Response,
     db: Session = Depends(get_db)
 ):
     """
     Renouveler l'access token avec un refresh token
+    Le refresh token est lu depuis le cookie httpOnly
     """
+    # Lire le refresh token depuis le cookie
+    refresh_token = request.cookies.get("refresh_token")
+    
+    if not refresh_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token manquant"
+        )
+    
     # Vérifier le refresh token
-    payload = verify_token(refresh_request.refresh_token, token_type="refresh")
+    payload = verify_token(refresh_token, token_type="refresh")
     
     if not payload:
         raise HTTPException(
