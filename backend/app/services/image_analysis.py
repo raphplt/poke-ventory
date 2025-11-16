@@ -85,7 +85,7 @@ class ImageAnalyzer:
         h, w = image.shape[:2]
         return image, (0, 0, w, h)
 
-    def _detect_boxes(self, image: "np.ndarray") -> List[Tuple[int, int, int, int]]:
+    def _detect_boxes(self, image: "np.ndarray") -> List[Tuple[int, int, int, int]]: # type: ignore
         if cv2 is None:
             return []
 
