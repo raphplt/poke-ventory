@@ -4,7 +4,8 @@
 			<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 				<div class="flex justify-between h-16">
 					<div class="flex items-center">
-						<NuxtLink to="/" class="text-xl font-bold text-gray-900">
+						<NuxtLink to="/" class="flex items-center gap-2 text-xl font-bold text-gray-900">
+							<img :src="logoImage" alt="PokeVentory" class="w-10 h-10" />
 							PokeVentory
 						</NuxtLink>
 					</div>
@@ -71,6 +72,8 @@
 </template>
 
 <script setup lang="ts">
+import logoImage from "~/assets/images/Logo.png";
+
 const { user, isAuthenticated, logout } = useAuth();
 const router = useRouter();
 
