@@ -7,6 +7,7 @@ python-dotenv
 pydantic[email]
 passlib[argon2]
 python-jose[cryptography]
+pyOpenSSL>=24.2.0
 python-multipart
 requests
 apscheduler

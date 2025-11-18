@@ -49,3 +49,11 @@ class CardResponse(CardBase):
 
     class Config:
         from_attributes = True
+
+
+class CardsListResponse(BaseModel):
+    """Schéma de réponse pour la liste paginée de cartes"""
+    items: List[CardResponse]
+    total: int
+    skip: int
+    limit: int

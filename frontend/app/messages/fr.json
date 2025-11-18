@@ -11,8 +11,11 @@
 			"showFilters": "Afficher les filtres",
 			"hideFilters": "Masquer les filtres",
 			"filters": {
+				"title": "Filtres avancés",
 				"series": "Série",
 				"set": "Set",
+				"localId": "Numéro dans le set",
+				"localIdPlaceholder": "Ex: 001, 025, 150",
 				"rarity": "Rareté",
 				"category": "Catégorie",
 				"type": "Type",

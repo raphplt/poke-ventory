@@ -9,7 +9,7 @@ from typing import List, Optional
 from app.database import get_db
 from app.models.card import Card
 from app.models.set import Set
-from app.schemas.card import CardCreate, CardResponse, CardUpdate
+from app.schemas.card import CardCreate, CardResponse, CardUpdate, CardsListResponse
 from app.utils.dependencies import get_current_user
 from app.models.user import User
 
@@ -19,7 +19,7 @@ router = APIRouter(
 )
 
 
-@router.get("/", response_model=dict)
+@router.get("/", response_model=CardsListResponse)
 def get_all_cards(
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
@@ -73,12 +73,15 @@ def get_all_cards(
     # Appliquer pagination
     cards = query.offset(skip).limit(limit).all()
     
-    return {
-        "items": cards,
-        "total": total,
-        "skip": skip,
-        "limit": limit
-    }
+    # Convertir les objets SQLAlchemy en schémas Pydantic
+    card_responses = [CardResponse.model_validate(card) for card in cards]
+    
+    return CardsListResponse(
+        items=card_responses,
+        total=total,
+        skip=skip,
+        limit=limit
+    )
 
 
 @router.get("/{card_id}", response_model=CardResponse)

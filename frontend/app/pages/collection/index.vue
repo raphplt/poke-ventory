@@ -48,19 +48,16 @@ const loadCollection = async (page = 1) => {
 	}
 };
 
-// Calculer le nombre de pages
 const totalPages = computed(() => {
 	return Math.ceil(totalCards.value / pageSize.value);
 });
 
-// Pagination
 const goToPage = (page: number) => {
 	if (page >= 1 && page <= totalPages.value) {
 		loadCollection(page);
 	}
 };
 
-// Calculer le total de cartes uniques et la quantité totale
 const uniqueCardsCount = computed(() => {
 	return userCards.value.length;
 });
@@ -69,12 +66,10 @@ const totalQuantity = computed(() => {
 	return userCards.value.reduce((sum, uc) => sum + uc.quantity, 0);
 });
 
-// Charger au montage
 onMounted(() => {
 	loadCollection(1);
 });
 
-// Recharger quand le filtre change
 watch(selectedSetId, () => {
 	loadCollection(1);
 });
@@ -164,7 +159,7 @@ watch(selectedSetId, () => {
 					>
 						<div v-if="userCard.card?.image" class="mb-3">
 							<img
-								:src="userCard.card.image"
+								:src="userCard.card.image + '/high.png'"
 								:alt="userCard.card.name"
 								class="w-full h-48 object-contain rounded"
 							/>

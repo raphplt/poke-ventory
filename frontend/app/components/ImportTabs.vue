@@ -2,10 +2,16 @@
 type ImportTab = "photo" | "file" | "search";
 type ImportType = "cards" | "products";
 
-const activeTab = ref<ImportTab>("photo");
+const activeTab = ref<ImportTab>("search");
 const importType = ref<ImportType>("cards");
 
 const tabs = [
+	{
+		id: "search" as ImportTab,
+		label: "Par recherche",
+		icon: "🔍",
+		description: "Recherche dans la base",
+	},
 	{
 		id: "photo" as ImportTab,
 		label: "Par photo",
@@ -18,16 +24,14 @@ const tabs = [
 		icon: "📄",
 		description: "Import CSV/Excel",
 	},
-	{
-		id: "search" as ImportTab,
-		label: "Par recherche",
-		icon: "🔍",
-		description: "Recherche dans la base",
-	},
 ];
 
 const setActiveTab = (tabId: ImportTab) => {
 	activeTab.value = tabId;
+};
+
+const setImportType = (type: ImportType) => {
+	importType.value = type;
 };
 </script>
 
@@ -42,7 +46,7 @@ const setActiveTab = (tabId: ImportTab) => {
 							? 'bg-blue-50 text-blue-700'
 							: 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
 					"
-					@click="importType = 'cards'"
+					@click="setImportType('cards')"
 				>
 					<span class="mr-1.5">🎴</span>
 					Cartes
@@ -54,7 +58,7 @@ const setActiveTab = (tabId: ImportTab) => {
 							? 'bg-purple-50 text-purple-700'
 							: 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
 					"
-					@click="importType = 'products'"
+					@click="setImportType('products')"
 				>
 					<span class="mr-1.5">📦</span>
 					Produits scellés
@@ -62,7 +66,7 @@ const setActiveTab = (tabId: ImportTab) => {
 			</div>
 		</div>
 
-		<!-- Méthodes d'import - tabs horizontaux discrets -->
+		<!-- Méthodes d'import -->
 		<div class="border-b border-gray-200">
 			<nav class="flex gap-1 -mb-px" aria-label="Méthodes d'import">
 				<button
@@ -82,7 +86,6 @@ const setActiveTab = (tabId: ImportTab) => {
 			</nav>
 		</div>
 
-		<!-- Contenu principal avec plus d'espace -->
 		<main>
 			<div class="bg-white rounded-lg border border-gray-200 p-6">
 				<ImportPhotoTab v-if="activeTab === 'photo'" :import-type="importType" />
