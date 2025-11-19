@@ -146,3 +146,6 @@ cython_debug/
 # Environment variables
 .env.local
 .env.*.local
+
+
+NUL

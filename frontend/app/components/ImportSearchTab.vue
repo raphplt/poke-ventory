@@ -9,6 +9,7 @@ const props = defineProps<Props>();
 
 const { getCards, getSeries, getSets } = useCards();
 const { addUserCardsBatch } = useUserCards();
+const { t } = useI18n();
 
 const searchQuery = ref("");
 const isSearching = ref(false);
@@ -17,62 +18,25 @@ const totalResults = ref(0);
 const currentPage = ref(1);
 const pageSize = ref(20);
 
-const filters = ref<CardFilters>({
-	skip: 0,
-	limit: pageSize.value,
-});
 const showFilters = ref(false);
-
-const { t } = useI18n();
 
 const series = ref<Series[]>([]);
 const sets = ref<Set[]>([]);
-const selectedSeriesId = ref<string | null>(null);
-const selectedSetId = ref<string | null>(null);
-const selectedRarity = ref<string | null>(null);
-const selectedCategory = ref<string | null>(null);
-const selectedType = ref<string | null>(null);
-const selectedStage = ref<string | null>(null);
+
+// Filter states (arrays)
+const selectedSeriesIds = ref<string[]>([]);
+const selectedSetIds = ref<string[]>([]);
+const selectedRarities = ref<string[]>([]);
+const selectedCategories = ref<string[]>([]);
+const selectedTypes = ref<string[]>([]);
+const selectedStages = ref<string[]>([]);
 const selectedLocalId = ref<string>("");
 
-// États UI
+// UI States
 const errorMessage = ref<string | null>(null);
 const successMessage = ref<string | null>(null);
 const selectedCards = ref<Set<string>>(new Set());
 const isAdding = ref(false);
-
-// Raretés communes
-const rarities = [
-	"Common",
-	"Uncommon",
-	"Rare",
-	"Ultra Rare",
-	"Secret Rare",
-	"Rare Holo",
-	"Rare Holo EX",
-	"Rare Holo GX",
-	"Rare Holo V",
-	"Rare Holo VMAX",
-	"Rare Holo VSTAR",
-];
-
-const categories = ["Pokemon", "Trainer", "Energy"];
-
-const stages = ["Basic", "Stage1", "Stage2"];
-
-const pokemonTypes = [
-	"Grass",
-	"Fire",
-	"Water",
-	"Lightning",
-	"Psychic",
-	"Fighting",
-	"Darkness",
-	"Metal",
-	"Fairy",
-	"Dragon",
-	"Colorless",
-];
 
 onMounted(async () => {
 	try {
@@ -87,20 +51,31 @@ onMounted(async () => {
 	}
 });
 
-watch(selectedSeriesId, async (newSeriesId) => {
-	if (newSeriesId) {
+watch(selectedSeriesIds, async (newSeriesIds) => {
+	if (newSeriesIds.length > 0) {
 		try {
-			const setsData = await getSets(newSeriesId);
+			const setsData = await getSets(newSeriesIds);
 			sets.value = setsData.data.value || [];
-			selectedSetId.value = null;
 		} catch (error) {
 			console.error("Erreur lors du chargement des sets:", error);
 		}
 	} else {
 		sets.value = [];
-		selectedSetId.value = null;
+		selectedSetIds.value = [];
 	}
 });
+
+const hasActiveFilters = () => {
+	return !!(
+		selectedSetIds.value.length > 0 ||
+		selectedSeriesIds.value.length > 0 ||
+		selectedRarities.value.length > 0 ||
+		selectedCategories.value.length > 0 ||
+		selectedTypes.value.length > 0 ||
+		selectedStages.value.length > 0 ||
+		selectedLocalId.value.trim()
+	);
+};
 
 const performSearch = async (page = 1) => {
 	if (!searchQuery.value.trim() && !hasActiveFilters()) {
@@ -121,23 +96,23 @@ const performSearch = async (page = 1) => {
 	if (searchQuery.value.trim()) {
 		searchFilters.name = searchQuery.value.trim();
 	}
-	if (selectedSetId.value) {
-		searchFilters.set_id = selectedSetId.value;
+	if (selectedSetIds.value.length > 0) {
+		searchFilters.set_id = selectedSetIds.value;
 	}
-	if (selectedSeriesId.value) {
-		searchFilters.series_id = selectedSeriesId.value;
+	if (selectedSeriesIds.value.length > 0) {
+		searchFilters.series_id = selectedSeriesIds.value;
 	}
-	if (selectedRarity.value) {
-		searchFilters.rarity = selectedRarity.value;
+	if (selectedRarities.value.length > 0) {
+		searchFilters.rarity = selectedRarities.value;
 	}
-	if (selectedCategory.value) {
-		searchFilters.category = selectedCategory.value;
+	if (selectedCategories.value.length > 0) {
+		searchFilters.category = selectedCategories.value;
 	}
-	if (selectedType.value) {
-		searchFilters.type = selectedType.value;
+	if (selectedTypes.value.length > 0) {
+		searchFilters.type = selectedTypes.value;
 	}
-	if (selectedStage.value) {
-		searchFilters.stage = selectedStage.value;
+	if (selectedStages.value.length > 0) {
+		searchFilters.stage = selectedStages.value;
 	}
 	if (selectedLocalId.value.trim()) {
 		searchFilters.local_id = selectedLocalId.value.trim();
@@ -165,34 +140,25 @@ const performSearch = async (page = 1) => {
 	}
 };
 
-const hasActiveFilters = () => {
-	return !!(
-		selectedSetId.value ||
-		selectedSeriesId.value ||
-		selectedRarity.value ||
-		selectedCategory.value ||
-		selectedType.value ||
-		selectedStage.value ||
-		selectedLocalId.value.trim()
-	);
-};
-
 const resetFilters = () => {
-	selectedSeriesId.value = null;
-	selectedSetId.value = null;
-	selectedRarity.value = null;
-	selectedCategory.value = null;
-	selectedType.value = null;
-	selectedStage.value = null;
+	selectedSeriesIds.value = [];
+	selectedSetIds.value = [];
+	selectedRarities.value = [];
+	selectedCategories.value = [];
+	selectedTypes.value = [];
+	selectedStages.value = [];
 	selectedLocalId.value = "";
 };
 
-const toggleCardSelection = (cardId: string) => {
-	if (selectedCards.value.has(cardId)) {
-		selectedCards.value.delete(cardId);
-	} else {
-		selectedCards.value.add(cardId);
-	}
+const resetSearch = () => {
+	searchQuery.value = "";
+	searchResults.value = [];
+	selectedCards.value.clear();
+	errorMessage.value = null;
+	successMessage.value = null;
+	currentPage.value = 1;
+	totalResults.value = 0;
+	resetFilters();
 };
 
 const addSelectedCards = async () => {
@@ -227,28 +193,6 @@ const addSelectedCards = async () => {
 			error instanceof Error ? error.message : "Une erreur est survenue.";
 	} finally {
 		isAdding.value = false;
-	}
-};
-
-const resetSearch = () => {
-	searchQuery.value = "";
-	searchResults.value = [];
-	selectedCards.value.clear();
-	errorMessage.value = null;
-	successMessage.value = null;
-	currentPage.value = 1;
-	totalResults.value = 0;
-	resetFilters();
-};
-
-const totalPages = computed(() => {
-	return Math.ceil(totalResults.value / pageSize.value);
-});
-
-// Pagination
-const goToPage = (page: number) => {
-	if (page >= 1 && page <= totalPages.value) {
-		performSearch(page);
 	}
 };
 </script>
@@ -301,9 +245,7 @@ const goToPage = (page: number) => {
 				</button>
 			</div>
 
-			<UiCollapsible
-				v-model:open="showFilters"
-			>
+			<UiCollapsible v-model:open="showFilters">
 				<template #default="{ isOpen, toggle }">
 					<div class="mt-4 pt-4 border-t border-gray-200">
 						<button
@@ -320,166 +262,19 @@ const goToPage = (page: number) => {
 							/>
 						</button>
 
-						<div
-							v-show="isOpen"
-							class="mt-4 space-y-4"
-						>
-							<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-								<div>
-									<label class="block text-xs font-medium text-gray-700 mb-1">
-										{{ t("import.search.filters.series") }}
-									</label>
-									<select
-										v-model="selectedSeriesId"
-										class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-									>
-										<option :value="null">
-											{{ t("import.search.filters.allSeries") }}
-										</option>
-										<option
-											v-for="s in series"
-											:key="s.id"
-											:value="s.id"
-										>
-											{{ s.name }}
-										</option>
-									</select>
-								</div>
-
-								<!-- Set -->
-								<div>
-									<label class="block text-xs font-medium text-gray-700 mb-1">
-										{{ t("import.search.filters.set") }}
-									</label>
-									<select
-										v-model="selectedSetId"
-										class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:cursor-not-allowed"
-										:disabled="!selectedSeriesId"
-									>
-										<option :value="null">
-											{{ t("import.search.filters.allSets") }}
-										</option>
-										<option
-											v-for="set in sets"
-											:key="set.id"
-											:value="set.id"
-										>
-											{{ set.name }}
-										</option>
-									</select>
-								</div>
-
-								<!-- Numéro dans le set (local_id) -->
-								<div>
-									<label class="block text-xs font-medium text-gray-700 mb-1">
-										{{ t("import.search.filters.localId") }}
-									</label>
-									<input
-										v-model="selectedLocalId"
-										type="text"
-										:placeholder="t('import.search.filters.localIdPlaceholder')"
-										class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-									/>
-								</div>
-
-								<!-- Rareté -->
-								<div>
-									<label class="block text-xs font-medium text-gray-700 mb-1">
-										{{ t("import.search.filters.rarity") }}
-									</label>
-									<select
-										v-model="selectedRarity"
-										class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-									>
-										<option :value="null">
-											{{ t("import.search.filters.allRarities") }}
-										</option>
-										<option
-											v-for="rarity in rarities"
-											:key="rarity"
-											:value="rarity"
-										>
-											{{ rarity }}
-										</option>
-									</select>
-								</div>
-
-								<!-- Catégorie -->
-								<div>
-									<label class="block text-xs font-medium text-gray-700 mb-1">
-										{{ t("import.search.filters.category") }}
-									</label>
-									<select
-										v-model="selectedCategory"
-										class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-									>
-										<option :value="null">
-											{{ t("import.search.filters.allCategories") }}
-										</option>
-										<option
-											v-for="cat in categories"
-											:key="cat"
-											:value="cat"
-										>
-											{{ cat }}
-										</option>
-									</select>
-								</div>
-
-								<!-- Type -->
-								<div>
-									<label class="block text-xs font-medium text-gray-700 mb-1">
-										{{ t("import.search.filters.type") }}
-									</label>
-									<select
-										v-model="selectedType"
-										class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-									>
-										<option :value="null">
-											{{ t("import.search.filters.allTypes") }}
-										</option>
-										<option
-											v-for="type in pokemonTypes"
-											:key="type"
-											:value="type"
-										>
-											{{ type }}
-										</option>
-									</select>
-								</div>
-
-								<!-- Stage -->
-								<div>
-									<label class="block text-xs font-medium text-gray-700 mb-1">
-										{{ t("import.search.filters.stage") }}
-									</label>
-									<select
-										v-model="selectedStage"
-										class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-									>
-										<option :value="null">
-											{{ t("import.search.filters.allStages") }}
-										</option>
-										<option
-											v-for="stage in stages"
-											:key="stage"
-											:value="stage"
-										>
-											{{ stage }}
-										</option>
-									</select>
-								</div>
-							</div>
-
-							<div v-if="hasActiveFilters()" class="flex justify-end">
-								<button
-									type="button"
-									class="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-									@click="resetFilters"
-								>
-									{{ t("import.search.filters.resetFilters") }}
-								</button>
-							</div>
+						<div v-show="isOpen" class="mt-4">
+							<ImportSearchFilters
+								v-model:selectedSeriesIds="selectedSeriesIds"
+								v-model:selectedSetIds="selectedSetIds"
+								v-model:selectedRarities="selectedRarities"
+								v-model:selectedCategories="selectedCategories"
+								v-model:selectedTypes="selectedTypes"
+								v-model:selectedStages="selectedStages"
+								v-model:selectedLocalId="selectedLocalId"
+								:series="series"
+								:sets="sets"
+								@reset="resetFilters"
+							/>
 						</div>
 					</div>
 				</template>
@@ -502,102 +297,18 @@ const goToPage = (page: number) => {
 		</div>
 
 		<!-- Résultats -->
-		<div v-if="searchResults.length > 0" class="space-y-4">
-			<div class="flex items-center justify-between">
-				<div>
-					<h3 class="text-lg font-semibold text-gray-900">
-						Résultats ({{ totalResults }})
-					</h3>
-					<p v-if="selectedCards.size > 0" class="text-sm text-gray-600 mt-1">
-						{{ selectedCards.size }} carte(s) sélectionnée(s)
-					</p>
-				</div>
-				<button
-					v-if="selectedCards.size > 0"
-					class="px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-md hover:bg-emerald-700 transition-colors disabled:opacity-50"
-					:disabled="isAdding"
-					@click="addSelectedCards"
-				>
-					{{ isAdding ? "Ajout..." : `Ajouter ${selectedCards.size} carte(s)` }}
-				</button>
-			</div>
-
-			<!-- Grille de cartes -->
-			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-				<div
-					v-for="card in searchResults"
-					:key="card.id"
-					class="rounded-lg border p-4 cursor-pointer transition-all hover:shadow-md"
-					:class="
-						selectedCards.has(card.id)
-							? 'border-blue-500 bg-blue-50 ring-2 ring-blue-500'
-							: 'border-gray-200 bg-white hover:border-gray-300'
-					"
-					@click="toggleCardSelection(card.id)"
-				>
-					<div class="flex items-start gap-3">
-						<input
-							type="checkbox"
-							:checked="selectedCards.has(card.id)"
-							class="mt-1 text-blue-600 focus:ring-blue-500"
-							@click.stop="toggleCardSelection(card.id)"
-						/>
-						<div class="flex-1 min-w-0">
-							<div v-if="card.image" class="mb-2">
-								<img
-									:src="card.image + '/high.png'"
-									:alt="card.name"
-									class="w-full h-32 object-contain rounded"
-								/>
-							</div>
-							<p class="font-semibold text-sm text-gray-900 truncate">
-								{{ card.name }}
-							</p>
-							<p class="text-xs text-gray-500 mt-1">
-								#{{ card.local_id }}
-							</p>
-							<div v-if="card.rarity" class="mt-1">
-								<span
-									class="inline-block px-2 py-0.5 text-xs font-medium rounded bg-gray-100 text-gray-700"
-								>
-									{{ card.rarity }}
-								</span>
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
-
-			<!-- Pagination -->
-			<div v-if="totalPages > 1" class="flex items-center justify-center gap-2 pt-4">
-				<button
-					class="px-3 py-2 text-sm border border-gray-300 rounded-md bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-					:disabled="currentPage === 1"
-					@click="goToPage(currentPage - 1)"
-				>
-					Précédent
-				</button>
-				<span class="px-4 py-2 text-sm text-gray-700">
-					Page {{ currentPage }} sur {{ totalPages }}
-				</span>
-				<button
-					class="px-3 py-2 text-sm border border-gray-300 rounded-md bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-					:disabled="currentPage === totalPages"
-					@click="goToPage(currentPage + 1)"
-				>
-					Suivant
-				</button>
-			</div>
-
-			<div class="pt-4 border-t border-gray-200">
-				<button
-					class="text-sm text-gray-500 underline hover:text-gray-700"
-					@click="resetSearch"
-				>
-					Nouvelle recherche
-				</button>
-			</div>
-		</div>
+		<ImportSearchResults
+			v-if="searchResults.length > 0"
+			v-model:selectedCards="selectedCards"
+			:results="searchResults"
+			:total-results="totalResults"
+			:current-page="currentPage"
+			:page-size="pageSize"
+			:is-adding="isAdding"
+			@update:page="performSearch"
+			@add="addSelectedCards"
+			@reset="resetSearch"
+		/>
 
 		<!-- État vide -->
 		<div

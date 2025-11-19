@@ -44,13 +44,13 @@ export interface Series {
 
 // Filtres
 export interface CardFilters {
-	set_id?: string;
-	series_id?: string;
+	set_id?: string | string[];
+	series_id?: string | string[];
 	name?: string;
-	rarity?: string;
-	category?: string;
-	type?: string;
-	stage?: string;
+	rarity?: string | string[];
+	category?: string | string[];
+	type?: string | string[];
+	stage?: string | string[];
 	local_id?: string;
 	skip?: number;
 	limit?: number;
