@@ -17,7 +17,7 @@
 			<!-- Navigation principale -->
 			<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 				<NuxtLink
-					to="/test-cards"
+					to="/cards"
 					class="block p-6 border border-gray-300 rounded-lg hover:shadow-lg transition-shadow bg-white"
 				>
 					<h2 class="text-xl font-semibold mb-2">📋 Catalogue de cartes</h2>

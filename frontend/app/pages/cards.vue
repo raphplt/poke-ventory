@@ -1,12 +1,6 @@
 <script setup lang="ts">
 import type { Card, CardFilters, Series, Set as CardSet } from "~/types/api";
 
-interface Props {
-	importType: "cards" | "products";
-}
-
-const props = defineProps<Props>();
-
 const { getCards, getSeries, getSets } = useCards();
 const { addUserCardsBatch } = useUserCards();
 const { t } = useI18n();
@@ -42,6 +36,8 @@ onMounted(async () => {
 	try {
 		const seriesData = await getSeries();
 		series.value = seriesData.data.value || [];
+		// Initial load
+		await performSearch(1);
 	} catch (error) {
 		console.error("Erreur lors du chargement des séries:", error);
 	}
@@ -78,11 +74,6 @@ const hasActiveFilters = () => {
 };
 
 const performSearch = async (page = 1) => {
-	if (!searchQuery.value.trim() && !hasActiveFilters()) {
-		errorMessage.value = "Saisis au moins un mot-clé ou utilise des filtres pour lancer la recherche.";
-		return;
-	}
-
 	isSearching.value = true;
 	errorMessage.value = null;
 	successMessage.value = null;
@@ -152,13 +143,12 @@ const resetFilters = () => {
 
 const resetSearch = () => {
 	searchQuery.value = "";
-	searchResults.value = [];
 	selectedCards.value.clear();
 	errorMessage.value = null;
 	successMessage.value = null;
 	currentPage.value = 1;
-	totalResults.value = 0;
 	resetFilters();
+	performSearch(1);
 };
 
 const addSelectedCards = async () => {
@@ -178,12 +168,9 @@ const addSelectedCards = async () => {
 		}));
 
 		const response = await addUserCardsBatch(cardsToAdd);
-		const itemType = props.importType === "cards" ? "carte(s)" : "produit(s)";
-		const destination =
-			props.importType === "cards" ? "collection" : "inventaire";
-
+		
 		if (response.created > 0 || response.updated > 0) {
-			successMessage.value = `${response.created + response.updated} ${itemType} ajouté(s) à ta ${destination} !`;
+			successMessage.value = `${response.created + response.updated} carte(s) ajoutée(s) à ta collection !`;
 			selectedCards.value.clear();
 		} else {
 			errorMessage.value = "Aucune carte n'a pu être ajoutée.";
@@ -198,17 +185,13 @@ const addSelectedCards = async () => {
 </script>
 
 <template>
-	<div class="space-y-6">
+	<div class="container mx-auto p-4 space-y-6">
 		<div>
-			<h2 class="text-xl font-semibold text-gray-900 mb-1">
-				Import par recherche
-			</h2>
-			<p class="text-sm text-gray-600">
-				{{
-					props.importType === "cards"
-						? "Recherche des cartes dans notre base de données et ajoute-les à ta collection."
-						: "Recherche des produits scellés dans notre base de données et ajoute-les à ton inventaire."
-				}}
+			<h1 class="text-3xl font-bold text-gray-900 mb-2">
+				Toutes les cartes
+			</h1>
+			<p class="text-gray-600">
+				Parcours l'ensemble des cartes Pokémon de la base de données.
 			</p>
 		</div>
 
@@ -218,17 +201,13 @@ const addSelectedCards = async () => {
 				<input
 					v-model="searchQuery"
 					type="text"
-					:placeholder="
-						props.importType === 'cards'
-							? 'Ex: Pikachu, Dracaufeu, Base Set...'
-							: 'Ex: Booster Écarlate et Violet, Display Paradoxe...'
-					"
+					placeholder="Ex: Pikachu, Dracaufeu, Base Set..."
 					class="flex-1 px-4 py-2 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
 					@keyup.enter="performSearch(1)"
 				/>
 				<button
 					class="px-5 py-2 text-sm font-medium text-white bg-blue-600 rounded-md disabled:opacity-50 hover:bg-blue-700 transition-colors shrink-0"
-					:disabled="isSearching || (!searchQuery.trim() && !hasActiveFilters())"
+					:disabled="isSearching"
 					@click="performSearch(1)"
 				>
 					{{ isSearching ? "Recherche..." : "Rechercher" }}
@@ -319,5 +298,13 @@ const addSelectedCards = async () => {
 				Utilise la barre de recherche ou les filtres pour trouver des cartes.
 			</p>
 		</div>
+        <div
+            v-else-if="!isSearching"
+            class="rounded-lg border border-gray-200 bg-gray-50 p-8 text-center"
+        >
+            <p class="text-gray-600">
+                Aucun résultat trouvé.
+            </p>
+        </div>
 	</div>
 </template>
