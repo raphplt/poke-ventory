@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Composable pour les appels API
  * Gère automatiquement la base URL et les credentials (cookies httpOnly)

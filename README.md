@@ -1,7 +1,7 @@
 # **PokeVentory**
 
 PokeVentory est une application permettant de gérer une collection de cartes Pokémon : ajout, suivi, organisation par set, et estimation de valeur.
-Le projet est structuré en **monorepo** avec un backend FastAPI et un frontend Nuxt 3.
+Le projet est structuré en monorepo avec un backend FastAPI et un frontend Nuxt 3.
 
 ---
 

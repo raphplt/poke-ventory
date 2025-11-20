@@ -70,21 +70,21 @@ export const useCards = () => {
 	};
 
 	/**
-	 * Créer une carte (nécessite authentification)
+	 * Créer une carte
 	 */
 	const createCard = async (card: Partial<Card>) => {
 		return await api.post<Card>("/cards/", card);
 	};
 
 	/**
-	 * Mettre à jour une carte (nécessite authentification)
+	 * Mettre à jour une carte
 	 */
 	const updateCard = async (cardId: string, card: Partial<Card>) => {
 		return await api.put<Card>(`/cards/${cardId}`, card);
 	};
 
 	/**
-	 * Supprimer une carte (nécessite authentification)
+	 * Supprimer une carte
 	 */
 	const deleteCard = async (cardId: string) => {
 		return await api.delete(`/cards/${cardId}`);

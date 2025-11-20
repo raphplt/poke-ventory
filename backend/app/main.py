@@ -17,14 +17,9 @@ Base.metadata.create_all(bind=engine)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """
-    Gestion du cycle de vie de l'application
-    Démarre le scheduler au démarrage
-    """
-    # Startup
+
     scheduler = start_scheduler()
     yield
-    # Shutdown
     scheduler.shutdown()
 
 

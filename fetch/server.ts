@@ -1,5 +1,6 @@
 import express, { Request, Response } from "express";
 import TCGdex from "@tcgdex/sdk";
+import { PokecardexService } from "./pokecardex.service.js";
 
 class TcgDexService {
 	private tcgdex: TCGdex;
@@ -175,6 +176,36 @@ class TcgDexService {
 const app = express();
 const port = process.env.PORT || 3005;
 const tcgDexService = new TcgDexService();
+const pokecardexService = new PokecardexService();
+
+// Route pour lancer le scraping de Pokecardex
+app.get("/pokecardex/scrape", async (req: Request, res: Response) => {
+	try {
+		// Run in background to avoid timeout
+		pokecardexService.scrapeAll().then(() => {
+			console.log("Scraping completed");
+		}).catch(err => {
+			console.error("Scraping failed", err);
+		});
+		
+		res.json({ message: "Scraping started in background" });
+	} catch (error: any) {
+		res.status(500).json({ error: error.message });
+	}
+});
+
+// Route pour tester le scraping d'une série spécifique
+app.get("/pokecardex/series/:id/scrape", async (req: Request, res: Response) => {
+	try {
+		const items = await pokecardexService.scrapeSeriesItems(req.params.id);
+		// Trigger downloads in background
+		items.forEach(item => pokecardexService.downloadImage(item.imageUrl, item.localPath));
+		
+		res.json(items);
+	} catch (error: any) {
+		res.status(500).json({ error: error.message });
+	}
+});
 
 // Route pour récupérer une carte par son ID
 app.get("/tcgdex/cards/:id", async (req: Request, res: Response) => {

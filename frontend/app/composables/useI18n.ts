@@ -1,7 +1,7 @@
 import messages from "~/messages/fr.json";
 
 /**
- * Composable simple pour les traductions
+ * Composable pour les traductions
  */
 export const useI18n = () => {
 	const t = (key: string): string => {
@@ -12,7 +12,7 @@ export const useI18n = () => {
 			if (value && typeof value === "object" && k in value) {
 				value = value[k];
 			} else {
-				return key; // Retourne la clé si la traduction n'existe pas
+				return key;
 			}
 		}
 		
